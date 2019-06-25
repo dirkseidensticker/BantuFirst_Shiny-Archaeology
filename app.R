@@ -21,9 +21,14 @@ ui <- bootstrapPage(
 # Sites
 s <- read.csv("s.csv")
 
+# Styles
 st <- read.csv("StilGrChrono.Freq.csv")
 st <- st_as_sf(st, wkt = "WKT")
 st <- st_buffer(st, 0.1)
+
+# Centeroids for styles/labels:
+st.cent <- st_centroid(st)
+st.cent <- cbind(st.cent,st_coordinates(st.cent))
 
 pal <- colorBin("YlOrRd", domain = st$FROM, reverse = T)
 
@@ -32,6 +37,10 @@ bf <- read.csv("bf.csv")
 bf<- st_as_sf(bf, wkt = "WKT")
 
 bf <- cbind(bf,st_coordinates(bf))
+
+bf.chrono <- read.csv("bf_chrono.csv")
+bf.chrono<- st_as_sf(bf.chrono, wkt = "WKT")
+bf.chrono <- cbind(bf.chrono,st_coordinates(bf.chrono))
 
 ###########
 # Server  # 
@@ -67,25 +76,44 @@ server <- function(input, output) {
       addLayersControl(
         position = "bottomright",
         baseGroups = c("Toner Lite", "ESRI", "OpenStreetMap"),
-        overlayGroups = c("BantuFirst sites", "Reference Sites", "Pottery Styles"),
+        overlayGroups = c("BantuFirst sites", "BantuFirst sites (dated)", "Reference Sites", "Pottery Styles"),
         options = layersControlOptions(collapsed = F)) %>%
-      hideGroup("Pottery Styles")
+      hideGroup(c("Pottery Styles", "BantuFirst sites (dated)"))
   })
   
   filteredst <- reactive({
     st[st$TO >= input$range[1] & st$FROM <= input$range[2],]
   })
   
+  filteredlb <- reactive({
+    st.cent[st.cent$TO >= input$range[1] & st.cent$FROM <= input$range[2],]
+  })
+  
+  filteredbf <- reactive({
+    bf.chrono[bf.chrono$TO >= input$range[1] & bf.chrono$FROM <= input$range[2],]
+  })
+  
   observe({
     leafletProxy("map", data = s) %>% 
+      clearControls() %>% 
       clearShapes() %>% 
       clearMarkers() %>% 
-      clearControls() %>% 
       addPolygons(data = filteredst(),
                   stroke = FALSE, 
                   fillColor = ~pal(FROM),
                   popup = ~htmlEscape(Type),
                   group = "Pottery Styles") %>% 
+      # TODO: add lables for the styles (code is not reactive like)
+      #addLabelOnlyMarkers(data = filteredlb(),
+      #                    ~as.numeric(st.cent$X),
+      #                    ~as.numeric(st.cent$Y),
+      #                    label = ~Type,
+      #                    labelOptions = labelOptions(noHide = TRUE, direction = 'top', textOnly = TRUE),
+      #                    group = "Pottery Styles") %>%
+      addCircleMarkers(data = filteredbf(),
+                       popup = ~htmlEscape(name), 
+                       color = ~pal(FROM),
+                       group = "BantuFirst sites (dated)") %>%
       addCircleMarkers(data = s,
                  ~as.numeric(s$st_x),
                  ~as.numeric(s$st_y), 
