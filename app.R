@@ -142,7 +142,7 @@ server <- function(input, output) {
                        popup = ~htmlEscape(name), 
                        color = '#1E64C8',
                        group = "BantuFirst sites") %>%
-      addCircleMarkers(data = filteredaDRAC(),
+      addMarkers(data = filteredaDRAC(),
                        popup = ~htmlEscape(labnr),
                        group = "aDRAC") %>%
       addLegend(data = st, 
