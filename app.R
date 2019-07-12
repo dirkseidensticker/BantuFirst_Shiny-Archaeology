@@ -42,6 +42,13 @@ bf.chrono <- read.csv("bf_chrono.csv")
 bf.chrono<- st_as_sf(bf.chrono, wkt = "WKT")
 bf.chrono <- cbind(bf.chrono,st_coordinates(bf.chrono))
 
+# run periodically via aDRAC.R
+
+aDRAC <- read.csv("c14bazAAR_aDRAC.csv")
+
+aDRAC$FROM <- as.integer(aDRAC$FROM)
+aDRAC$TO <- as.integer(aDRAC$TO)
+
 ###########
 # Server  # 
 ###########
@@ -53,10 +60,13 @@ server <- function(input, output) {
       "range", 
       "Age", 
       width = "100%", 
-      min = min(st$FROM, na.rm = TRUE),
-      max = max(st$TO, na.rm = TRUE),
+      min = -1000,
+      max = 2000,
+      #min = min(st$FROM, na.rm = TRUE),
+      #max = max(st$TO, na.rm = TRUE),
       step = 100,
-      value = c(min(st$FROM), max(st$TO))
+      value = c(-500, 0),
+      #value = c(min(st$FROM), max(st$TO))
     )
   })
   
@@ -76,9 +86,9 @@ server <- function(input, output) {
       addLayersControl(
         position = "bottomright",
         baseGroups = c("Toner Lite", "ESRI", "OpenStreetMap"),
-        overlayGroups = c("BantuFirst sites", "BantuFirst sites (dated)", "Reference Sites", "Pottery Styles"),
+        overlayGroups = c("BantuFirst sites", "BantuFirst sites (d)", "Reference Sites", "Pottery Styles", "aDRAC"),
         options = layersControlOptions(collapsed = F)) %>%
-      hideGroup(c("Pottery Styles", "BantuFirst sites (dated)"))
+      hideGroup(c("Pottery Styles", "BantuFirst sites (d)", "aDRAC"))
   })
   
   filteredst <- reactive({
@@ -91,6 +101,10 @@ server <- function(input, output) {
   
   filteredbf <- reactive({
     bf.chrono[bf.chrono$TO >= input$range[1] & bf.chrono$FROM <= input$range[2],]
+  })
+  
+  filteredaDRAC <- reactive({
+    aDRAC[aDRAC$TO >= input$range[1] & aDRAC$FROM <= input$range[2],]
   })
   
   observe({
@@ -113,7 +127,7 @@ server <- function(input, output) {
       addCircleMarkers(data = filteredbf(),
                        popup = ~htmlEscape(name), 
                        color = ~pal(FROM),
-                       group = "BantuFirst sites (dated)") %>%
+                       group = "BantuFirst sites (d)") %>%
       addCircleMarkers(data = s,
                  ~as.numeric(s$st_x),
                  ~as.numeric(s$st_y), 
@@ -128,6 +142,9 @@ server <- function(input, output) {
                        popup = ~htmlEscape(name), 
                        color = '#1E64C8',
                        group = "BantuFirst sites") %>%
+      addCircleMarkers(data = filteredaDRAC(),
+                       popup = ~htmlEscape(labnr),
+                       group = "aDRAC") %>%
       addLegend(data = st, 
                 pal = pal, 
                 values = ~FROM, 
